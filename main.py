@@ -102,6 +102,7 @@ def main():
     data = Data(API_KEY, PROJECT_TOKEN)
     # print(data.get_list_of_countries())
     END_PHRASE = "stop"
+    country_list = data.get_list_of_countries()
 
     # Here we're defining RegEx search patterns 're'
     TOTAL_PATTERNS = {
@@ -116,7 +117,11 @@ def main():
     }
 
     COUNTRY_PATTERNS = {
+        # Here we use lambda to define an annonymous function to take in a single parameter to pass to our
+        # get_country_data function
         re.compile("[\w\s]+ cases [\w\s]+"): lambda country: data.get_country_data(country)['total_cases'],
+        re.compile("[\w\s]+ deaths [\w\s]+"): lambda country: data.get_country_data(country)['total_deaths'],
+        re.compile("[\w\s]+ active cases [\w\s]+"): lambda country: data.get_country_data(country)['active_cases'],
     }
 
     while True:
@@ -124,6 +129,21 @@ def main():
         text = get_audio()
         print(text)
         result = None
+
+        # For pattern and function in the items of COUNTRY_PATTERNS:
+        #  First, we check our speech/text patterns with the patterns ascribed above
+        # Second, we convert the string into a set so that we can now use each word as comparison check against a list
+        #  of our countries
+        # Third, we iterate through the list of our countries and try to match an individual word to a country - if so,
+        # then we pass that country as a parameter in our lambda function
+        for pattern, func in COUNTRY_PATTERNS.items():
+            if pattern.match(text):
+                words = set(text.split(" "))
+                for country in country_list:
+                    if country in words:
+                        result = func(country)
+                        break
+
         # This will loop through and get the pattern and associated function for each entry
         for pattern, func in TOTAL_PATTERNS.items():
             if pattern.match(text):
