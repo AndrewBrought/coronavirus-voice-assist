@@ -5,6 +5,8 @@ import pyttsx3
 import speech_recognition as sr
 import re
 import config
+import threading
+import time
 
 # ---------------------------------- ParseHub Custom API Setup and Call Handlers -------------------------------------
 # from parso.python.tree import Lambda
@@ -21,12 +23,13 @@ class Data:
         self.params = {
             "api_key": self.api_key
         }
-        self.get_data()
+        self.data = self.get_data()
 
     def get_data(self):
         response = requests.get(f'https://www.parsehub.com/api/v2/projects/{self.project_token}/last_ready_run/data',
                                 params=self.params)
-        self.data = json.loads(response.text)
+        data = json.loads(response.text)
+        return data
 
     def get_total_cases(self):
         data = self.data['total']
@@ -60,6 +63,32 @@ class Data:
 
         return countries
 
+    # --------------------------  Setting up a Thread to check-in the url for updated info without giving
+    # pause to our program ------------
+    def update_data(self):
+        # This initializes a new run on the parsehub servers
+        response = requests.post(f'https://www.parsehub.com/api/v2/projects/'
+                                 f'{self.project_token}/run', params=self.params)
+
+        def poll():
+            # this acts like a transition buffer between threads so as not to just take over an active thread
+            time.sleep(0.1)
+            old_data = self.data
+            while True:
+                new_data = self.get_data()
+                if new_data != old_data:
+                    self.data = new_data
+                    print("Data updated")
+                    break
+                time.sleep(5)
+
+        t = threading.Thread(target=poll)
+        t.start()
+
+
+# THREADING:
+# Here we're constantly checking the server for updated info - we are basically asynchronously making calls to the
+# url to determine differences from previous info received - ALL separately from the program running
 
 # data = Data(API_KEY, PROJECT_TOKEN)
 # print(data.get_list_of_countries())
