@@ -153,6 +153,8 @@ def main():
         re.compile("[\w\s]+ active cases [\w\s]+"): lambda country: data.get_country_data(country)['active_cases'],
     }
 
+    UPDATE_COMMAND = "update"
+
     while True:
         print("Listening...")
         text = get_audio()
@@ -178,6 +180,10 @@ def main():
             if pattern.match(text):
                 result = func()
                 break
+
+        if text == UPDATE_COMMAND:
+            result = "Data is being updated. This may take a moment!"
+            data.update_data()
 
         if result:
             speak(result)
